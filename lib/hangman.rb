@@ -1,31 +1,29 @@
 # frozen_string_literal: true
 
+require 'psych'
+
 # Player class gets users guess
 class Player
-  attr_accessor :guess
-
-  def initialize
-    @guess = ''
-  end
-
-  def user_guess
+  def self.user_guess
     puts 'select a letter from a-z'
-    @guess = gets.chomp.downcase
+    gets.chomp.downcase
   end
 end
 
 # Computer class gets secret word from file and checks the users guess against word and decides what to do
 class Computer
-  attr_accessor :secret_word, :line_to_fill
+  attr_accessor :line_to_fill, :secret_word
 
   def initialize
-    @secret_word = ''
-    @line_to_fill = ''
+    @secret_word = choose_secret_word
+    @line_to_fill = ''.rjust(secret_word.length, '_')
   end
 
   def choose_secret_word
     words = open_word_file
-    @secret_word = words[Random.new.rand(0..words.length - 1)].downcase
+    test = words[Random.new.rand(0..words.length - 1)].downcase
+    puts test
+    test
   end
 
   def open_word_file
@@ -33,44 +31,71 @@ class Computer
   end
 
   def guess_check(player_guess)
-    @secret_word.include?(player_guess)
-  end
-
-  def update_blank_line
-    @line_to_fill.rjust(@secret_word.length, '_')
+    secret_word.include?(player_guess)
   end
 
   def fill_blank_space(player_guess)
+    puts "before: #{@secret_word}"
     letter_to_fill = letter_position(player_guess)
     @line_to_fill = @line_to_fill.split(//)
     letter_to_fill.each { |letter| @line_to_fill[letter] = player_guess }
+    @line_to_fill = @line_to_fill.join
+    @secret_word = @secret_word.join
+    puts "after: #{@secret_word}"
+    puts "line_to_fill1: #{@line_to_fill}"
   end
 
   def letter_position(player_guess)
-    @secret_word.split(//).each_with_index.select { |letter| letter == player_guess }
+    @secret_word = secret_word.split(//)
+    @secret_word.each_index.select { |letter| @secret_word[letter] == player_guess }
   end
 end
 
 # game  creates players and calls functions where needed
 class Game
-  def initialize
-    @player = Player.new
-    @computer = Computer.new
-    @count = 1
-  end
-
   def save_game
-    Dir.mkdir('/saves')
-    if file_check("save#{count}")
-      puts 'do you wish to overwrite the save file'
-      if(gets.chomp.downcase == 'yes')
-        File.write("save#{count}")
-      end
+    save_directory = "#{Dir.home}/Documents/saves"
+    save_count = 1
+    data_to_save = Psych.dump({
+      letters_guessed: computer.line_to_fill,
+      secret_word: computer.secret_word,
+      count: count
+      })
+    make_save_directry
+    puts 'type yes to overwrite save'
+    if file_check("#{save_directory}/save#{save_count}.yaml") && gets.chomp.downcase == 'yes'
+      File.write("#{save_directory}/save#{save_count}.yaml", data_to_save)
     end
-    File.new("/saves/save#{@count += 1}")
+    File.new("#{save_directory}/save#{save_count += 1}.yaml", data_to_save)
   end
 
   def file_check(file_name)
     File.exist?(file_name.to_s)
   end
+
+  def make_save_directry
+    if Dir.exist?("#{Dir.home}/Documents/saves")
+      Dir.mkdir("#{Dir.home}/Documents/saves")
+    end
+  end
+
+  def play
+    computer = Computer.new
+    count = 0
+    puts 'welcome to hangman. If the count reaches 6 you lose'
+    loop do
+      player_guess = Player.user_guess
+      if computer.guess_check(player_guess)
+        computer.fill_blank_space(player_guess)
+      else
+        count += 1
+        puts count
+      end
+      if count == 6
+        puts "you have run out of guesses. the secret word was: #{computer.secret_word}"
+      end
+    end
+  end
 end
+
+Game.new.play

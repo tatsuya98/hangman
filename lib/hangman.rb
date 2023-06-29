@@ -21,9 +21,7 @@ class Computer
 
   def choose_secret_word
     words = open_word_file
-    test = words[Random.new.rand(0..words.length - 1)].downcase
-    puts test
-    test
+    words[Random.new.rand(0..words.length - 1)].downcase
   end
 
   def open_word_file
@@ -47,10 +45,20 @@ class Computer
     @secret_word = secret_word.split(//)
     @secret_word.each_index.select { |letter| @secret_word[letter] == player_guess }
   end
+
+  def win_condition
+    @line_to_fill == @secret_word
+  end
 end
 
 # game  creates players and calls functions where needed
 class Game
+  attr_accessor :count
+
+  def initialize
+    @count = 0
+  end
+
   def save_game
     save_directory = "#{Dir.home}/Documents/saves"
     save_count = 1
@@ -79,18 +87,21 @@ class Game
 
   def play
     computer = Computer.new
-    count = 0
     puts 'welcome to hangman. If the count reaches 6 you lose'
     loop do
       player_guess = Player.user_guess
       if computer.guess_check(player_guess)
         computer.fill_blank_space(player_guess)
       else
-        count += 1
-        puts count
+        @count += 1
+        puts "incorrect: #{@count}"
       end
-      if count == 6
-        puts "you have run out of guesses. the secret word was: #{computer.secret_word}"
+      if computer.win_condition 
+        puts "you have guessed the correct word #{@secret_word}"
+        break
+      elsif @count == 6
+        puts "you have not guessed the correct word #{@secret_word}"
+        break
       end
     end
   end

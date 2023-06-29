@@ -35,13 +35,11 @@ class Computer
   end
 
   def fill_blank_space(player_guess)
-    puts "before: #{@secret_word}"
     letter_to_fill = letter_position(player_guess)
     @line_to_fill = @line_to_fill.split(//)
     letter_to_fill.each { |letter| @line_to_fill[letter] = player_guess }
     @line_to_fill = @line_to_fill.join
     @secret_word = @secret_word.join
-    puts "after: #{@secret_word}"
     puts "line_to_fill1: #{@line_to_fill}"
   end
 

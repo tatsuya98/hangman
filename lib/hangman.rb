@@ -5,7 +5,7 @@ require 'psych'
 # Player class gets users guess
 class Player
   def self.user_guess
-    puts 'select a letter from a-z'
+    puts 'select a letter from a-z or type save if you wish to save-savename. type load-savename to load save'
     gets.chomp.downcase
   end
 end
@@ -34,6 +34,7 @@ class Computer
 
   def fill_blank_space(player_guess)
     letter_to_fill = letter_position(player_guess)
+    puts @line_to_fill
     @line_to_fill = @line_to_fill.split(//)
     letter_to_fill.each { |letter| @line_to_fill[letter] = player_guess }
     @line_to_fill = @line_to_fill.join
@@ -57,52 +58,59 @@ class Game
 
   def initialize
     @count = 0
+    @computer = Computer.new
   end
 
-  def save_game
+  def save_game(save_name)
     save_directory = "#{Dir.home}/Documents/saves"
-    save_count = 1
     data_to_save = Psych.dump({
-      letters_guessed: computer.line_to_fill,
-      secret_word: computer.secret_word,
-      count: count
+      letters_guessed: @computer.line_to_fill,
+      secret_word: @computer.secret_word,
+      count: @count
       })
-    make_save_directry
-    puts 'type yes to overwrite save'
-    if file_check("#{save_directory}/save#{save_count}.yaml") && gets.chomp.downcase == 'yes'
-      File.write("#{save_directory}/save#{save_count}.yaml", data_to_save)
-    end
-    File.new("#{save_directory}/save#{save_count += 1}.yaml", data_to_save)
+    File.write("#{save_directory}/#{save_name.slice(5, save_name.length - 1)}.yaml", data_to_save)
+  end
+
+  def load_game(save_name)
+    save_file = save_name.slice(5, save_name.length - 1)
+    puts "#{save_name.slice(5, save_name.length - 1)} loaded"
+    loaded_data = Psych.load_file("#{Dir.home}/Documents/saves/#{save_file}.yaml")
+    @computer.line_to_fill = loaded_data[:letters_guessed]
+    @count = loaded_data[:count]
+    @computer.secret_word = loaded_data[:secret_word]
   end
 
   def file_check(file_name)
     File.exist?(file_name.to_s)
   end
 
-  def make_save_directry
-    if Dir.exist?("#{Dir.home}/Documents/saves")
-      Dir.mkdir("#{Dir.home}/Documents/saves")
+  def make_save_directory
+    Dir.mkdir(File.join(Dir.home, 'Documents', 'saves'), 0700) unless Dir.exist?("#{Dir.home}/Documents/saves")
+    puts 'save folder created'
+  end
+
+  def condition_check(computer, player_guess)
+    if @computer.guess_check(player_guess)
+      @computer.fill_blank_space(player_guess)
+    elsif player_guess.include?('save-'.downcase)
+      save_game(player_guess)
+    elsif @count == 6
+      puts "you lose the secret word was: #{computer.secret_word}"
+    elsif @computer.line_to_fill == computer.secret_word
+      puts "you have guessed the word #{computer.secret_word}, you win"
+    elsif player_guess.include?('load-'.downcase)
+      load_game(player_guess)
+    elsif !@computer.guess_check(player_guess)
+      puts "the word does not contain this letter increasing count: #{@count}"
     end
   end
 
   def play
-    computer = Computer.new
-    puts 'welcome to hangman. If the count reaches 6 you lose'
+    make_save_directory
+    puts 'welcome to hangman. If the count reaches 6 you lose.'
     loop do
       player_guess = Player.user_guess
-      if computer.guess_check(player_guess)
-        computer.fill_blank_space(player_guess)
-      else
-        @count += 1
-        puts "incorrect: #{@count}"
-      end
-      if computer.win_condition 
-        puts "you have guessed the correct word #{@secret_word}"
-        break
-      elsif @count == 6
-        puts "you have not guessed the correct word #{@secret_word}"
-        break
-      end
+      condition_check(@computer, player_guess)
     end
   end
 end
